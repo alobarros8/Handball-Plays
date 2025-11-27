@@ -56,6 +56,9 @@ const PlayDesigner = () => {
     const [containerScale, setContainerScale] = useState(1);
     const [ballCarrierId, setBallCarrierId] = useState(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [selectedTokenId, setSelectedTokenId] = useState(null);
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [playNameInput, setPlayNameInput] = useState('');
 
     const containerRef = useRef(null);
     const startTimeRef = useRef(null);
@@ -89,8 +92,8 @@ const PlayDesigner = () => {
     const handleTokenMove = (id, newX, newY) => {
         if (isPlaying) return;
 
-        // Radio ajustado para fichas más pequeñas
-        const radius = 15;
+        // Radio ajustado para fichas más grandes
+        const radius = 20;
         const clampedX = Math.max(minX + radius, Math.min(maxX - radius, newX));
         const clampedY = Math.max(minY + radius, Math.min(maxY - radius, newY));
 
@@ -178,11 +181,15 @@ const PlayDesigner = () => {
     };
 
     const savePlay = () => {
-        const name = prompt("Nombre de la jugada:");
-        if (name) {
+        setShowSaveModal(true);
+        setPlayNameInput('');
+    };
+
+    const confirmSavePlay = () => {
+        if (playNameInput.trim()) {
             const newPlay = {
                 id: Date.now().toString(),
-                name,
+                name: playNameInput.trim(),
                 date: new Date().toISOString(),
                 frames: recordedFrames
             };
@@ -190,8 +197,14 @@ const PlayDesigner = () => {
             const updatedPlays = [...savedPlays, newPlay];
             setSavedPlays(updatedPlays);
             localStorage.setItem('handballPlays', JSON.stringify(updatedPlays));
-            alert("Jugada guardada correctamente.");
+            setShowSaveModal(false);
+            setPlayNameInput('');
         }
+    };
+
+    const cancelSavePlay = () => {
+        setShowSaveModal(false);
+        setPlayNameInput('');
     };
 
     const loadPlay = (play) => {
@@ -209,6 +222,12 @@ const PlayDesigner = () => {
             setSavedPlays(updatedPlays);
             localStorage.setItem('handballPlays', JSON.stringify(updatedPlays));
         }
+    };
+
+    const changeTokenColor = (tokenId, newColor) => {
+        setAdjustedTokens(prevTokens =>
+            prevTokens.map(t => t.id === tokenId ? { ...t, color: newColor } : t)
+        );
     };
 
     return (
@@ -248,40 +267,94 @@ const PlayDesigner = () => {
                 </button>
             </div>
 
-            {/* Cancha */}
-            <div className="court-container">
-                <div
-                    ref={containerRef}
-                    className="court-wrapper"
-                    style={{
-                        width: '100%',
-                        aspectRatio: `${totalInternalWidth} / ${totalInternalHeight}`,
-                        maxWidth: '1200px',
-                        maxHeight: '1000px'
-                    }}
-                >
-                    <div style={{ width: '100%', height: '100%' }}>
-                        <Court />
-                    </div>
+            {/* Contenedor principal con cancha y panel de colores */}
+            <div className="content-wrapper">
+                {/* Cancha */}
+                <div className="court-container">
+                    <div
+                        ref={containerRef}
+                        className="court-wrapper"
+                        style={{
+                            width: '100%',
+                            aspectRatio: `${totalInternalWidth} / ${totalInternalHeight}`,
+                            maxWidth: '1200px',
+                            maxHeight: '1000px'
+                        }}
+                    >
+                        <div style={{ width: '100%', height: '100%' }}>
+                            <Court />
+                        </div>
 
-                    {adjustedTokens.map(token => {
-                        const leftPercent = (token.x / totalInternalWidth) * 100;
-                        const topPercent = (token.y / totalInternalHeight) * 100;
-                        return (
-                            <DraggableToken
+                        {adjustedTokens.map(token => {
+                            const leftPercent = (token.x / totalInternalWidth) * 100;
+                            const topPercent = (token.y / totalInternalHeight) * 100;
+                            return (
+                                <DraggableToken
+                                    key={token.id}
+                                    {...token}
+                                    scale={containerScale}
+                                    onPositionChange={handleTokenMove}
+                                    isRecording={isRecording}
+                                    style={{
+                                        left: `${leftPercent}%`,
+                                        top: `${topPercent}%`,
+                                        transform: 'translate(-50%, -50%)',
+                                    }}
+                                />
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Panel de Colores */}
+                <div className="color-picker-panel">
+                    <h3 className="color-panel-title">🎨 Control de Colores</h3>
+                    <p className="color-panel-subtitle">Selecciona una ficha y elige un color</p>
+
+                    <div className="tokens-list">
+                        {adjustedTokens.map(token => (
+                            <div
                                 key={token.id}
-                                {...token}
-                                scale={containerScale}
-                                onPositionChange={handleTokenMove}
-                                isRecording={isRecording}
-                                style={{
-                                    left: `${leftPercent}%`,
-                                    top: `${topPercent}%`,
-                                    transform: 'translate(-50%, -50%)',
-                                }}
-                            />
-                        );
-                    })}
+                                className={`token-color-item ${selectedTokenId === token.id ? 'selected' : ''}`}
+                                onClick={() => setSelectedTokenId(token.id)}
+                            >
+                                <div className="token-info">
+                                    <span
+                                        className="token-preview"
+                                        style={{
+                                            backgroundColor: token.color,
+                                            border: token.type === 'ball' ? '2px solid #000' : 'none'
+                                        }}
+                                    ></span>
+                                    <span className="token-label">
+                                        {token.type === 'ball' ? '⚽ Pelota' : `👤 ${token.id}`}
+                                    </span>
+                                </div>
+
+                                {selectedTokenId === token.id && (
+                                    <div className="color-options">
+                                        <input
+                                            type="color"
+                                            value={token.color}
+                                            onChange={(e) => changeTokenColor(token.id, e.target.value)}
+                                            className="color-input"
+                                        />
+                                        <div className="preset-colors">
+                                            {['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#ffc107', '#000000', '#ffffff'].map(color => (
+                                                <button
+                                                    key={color}
+                                                    className="preset-color-btn"
+                                                    style={{ backgroundColor: color, border: color === '#ffffff' ? '1px solid #ddd' : 'none' }}
+                                                    onClick={() => changeTokenColor(token.id, color)}
+                                                    title={color}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -327,6 +400,37 @@ const PlayDesigner = () => {
                     )}
                 </div>
             </div>
+
+            {/* Modal de Guardado */}
+            {showSaveModal && (
+                <div className="modal-overlay" onClick={cancelSavePlay}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="modal-title">💾 Guardar Jugada</h3>
+                        <p className="modal-subtitle">Ingresa un nombre para esta jugada:</p>
+                        <input
+                            type="text"
+                            value={playNameInput}
+                            onChange={(e) => setPlayNameInput(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && confirmSavePlay()}
+                            placeholder="Ej: Ataque rápido por derecha"
+                            className="modal-input"
+                            autoFocus
+                        />
+                        <div className="modal-actions">
+                            <button onClick={cancelSavePlay} className="btn btn-reset btn-small">
+                                ❌ Cancelar
+                            </button>
+                            <button
+                                onClick={confirmSavePlay}
+                                className="btn btn-save btn-small"
+                                disabled={!playNameInput.trim()}
+                            >
+                                ✅ Guardar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

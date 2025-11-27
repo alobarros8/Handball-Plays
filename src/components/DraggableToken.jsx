@@ -94,7 +94,7 @@ const DraggableToken = ({ id, x, y, color, type, onPositionChange, isRecording, 
     }, [isDragging, x, y]); // Dependencias para closure de handleMove
 
     // Estilos
-    const size = type === 'ball' ? 12 : 24;
+    const size = type === 'ball' ? 16 : 32;
 
     // Estilos base (se usan si no hay customStyle con left/top)
     const baseStyle = {

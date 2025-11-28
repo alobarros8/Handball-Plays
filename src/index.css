@@ -574,3 +574,62 @@ body {
     max-width: none;
   }
 }
+
+/* Share Button */
+.btn-share {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+}
+
+.btn-share:hover:not(:disabled) {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+}
+
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+
+/* Share Modal Specific Styles */
+.share-modal {
+  max-width: 600px;
+}
+
+.share-url-container {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--bg-color);
+  border-radius: 8px;
+  border: 2px solid var(--border-color);
+}
+
+.share-url-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  font-family: monospace;
+  text-align: center;
+  cursor: pointer;
+  user-select: all;
+}
+
+.share-url-input:focus {
+  outline: none;
+}
+
+.share-info {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid var(--primary);
+}
+
+.share-info small {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}

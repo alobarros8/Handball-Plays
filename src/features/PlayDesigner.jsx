@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Court, { COURT_CONFIG } from '../components/Court';
 import DraggableToken from '../components/DraggableToken';
+import ShareModal from '../components/ShareModal';
+import { uploadPlay, generateShareUrl, getSharedPlay } from '../services/shareService';
+import { getSharedPlayIdFromUrl, clearSharedPlayParam } from '../utils/urlUtils';
 
 /**
  * Componente principal para el diseño de jugadas.
@@ -60,6 +63,12 @@ const PlayDesigner = () => {
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [playNameInput, setPlayNameInput] = useState('');
 
+    // Estados para compartir
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [shareUrl, setShareUrl] = useState('');
+    const [isSharing, setIsSharing] = useState(false);
+    const [shareError, setShareError] = useState(null);
+
     const containerRef = useRef(null);
     const startTimeRef = useRef(null);
     const requestRef = useRef(null);
@@ -87,6 +96,32 @@ const PlayDesigner = () => {
                 console.error("Error cargando jugadas", e);
             }
         }
+    }, []);
+
+    // Detectar si se abrió desde un enlace compartido
+    useEffect(() => {
+        const loadSharedPlay = async () => {
+            const sharedPlayId = getSharedPlayIdFromUrl();
+            if (sharedPlayId) {
+                try {
+                    const playData = await getSharedPlay(sharedPlayId);
+                    // Cargar la jugada compartida
+                    setRecordedFrames(playData.frames);
+                    if (playData.frames.length > 0) {
+                        setAdjustedTokens(playData.frames[0].tokens);
+                    }
+                    // Limpiar el parámetro de la URL
+                    clearSharedPlayParam();
+                    // Mostrar notificación
+                    alert(`✅ Jugada "${playData.name}" cargada desde enlace compartido`);
+                } catch (error) {
+                    console.error('Error loading shared play:', error);
+                    alert('❌ Error al cargar la jugada compartida: ' + error.message);
+                    clearSharedPlayParam();
+                }
+            }
+        };
+        loadSharedPlay();
     }, []);
 
     const handleTokenMove = (id, newX, newY) => {
@@ -228,6 +263,31 @@ const PlayDesigner = () => {
         setAdjustedTokens(prevTokens =>
             prevTokens.map(t => t.id === tokenId ? { ...t, color: newColor } : t)
         );
+    };
+
+    const sharePlay = async (play) => {
+        setIsSharing(true);
+        setShareError(null);
+
+        try {
+            // Subir la jugada a JSONBin
+            const shareId = await uploadPlay({
+                name: play.name,
+                date: play.date,
+                frames: play.frames
+            });
+
+            // Generar URL para compartir
+            const url = generateShareUrl(shareId);
+            setShareUrl(url);
+            setShowShareModal(true);
+        } catch (error) {
+            console.error('Error sharing play:', error);
+            setShareError(error.message);
+            alert('❌ ' + error.message);
+        } finally {
+            setIsSharing(false);
+        }
     };
 
     return (
@@ -390,6 +450,13 @@ const PlayDesigner = () => {
                                         <button onClick={() => loadPlay(play)} className="btn btn-small btn-load">
                                             📤 Cargar
                                         </button>
+                                        <button
+                                            onClick={() => sharePlay(play)}
+                                            className="btn btn-small btn-share"
+                                            disabled={isSharing}
+                                        >
+                                            {isSharing ? '⏳ Compartiendo...' : '🔗 Compartir'}
+                                        </button>
                                         <button onClick={() => deletePlay(play.id)} className="btn btn-small btn-delete">
                                             🗑️ Eliminar
                                         </button>
@@ -430,6 +497,14 @@ const PlayDesigner = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Modal de Compartir */}
+            {showShareModal && (
+                <ShareModal
+                    shareUrl={shareUrl}
+                    onClose={() => setShowShareModal(false)}
+                />
             )}
         </div>
     );
